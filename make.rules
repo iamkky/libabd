@@ -1,0 +1,7 @@
+all:: ${OBJS}
+
+test: test.o ${OBJS} -lm
+
+clean::
+	rm -f ${OBJS} test
+
