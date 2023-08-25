@@ -1,8 +1,7 @@
 
 # WASM enviroment variables
 
-WASI_SYSROOT=/opt/wasi-libc
-WASI_SYSROOT=/wexport4/vol_safe/wasi-libc
+WASI_SYSROOT=/opt/wasi-sdk/share/wasi-sysroot
 
 ifeq ($(WASM),yes)
 	CC=clang
