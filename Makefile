@@ -1,7 +1,7 @@
 
 
 LIB=libabd.a
-DIRS=mpaland io string safe
+DIRS=mpaland io string safe sort
 
 .PHONY: all $(DIRS)
 
