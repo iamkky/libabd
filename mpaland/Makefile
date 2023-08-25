@@ -31,4 +31,5 @@ CFLAGS+=	-Wall                             \
 # To silence a known warning
 CFLAGS+=	-Wno-sign-conversion
 
+include ../make.wasm
 include ../make.rules

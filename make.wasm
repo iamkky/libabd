@@ -1,0 +1,18 @@
+# WASM enviroment variables
+
+WASI_SYSROOT=/opt/wasi-sdk/share/wasi-sysroot
+
+ifeq ($(WASM),yes)
+	CC=clang
+	CXX=clang++
+        AR=llvm-ar
+        NM=llvm-nm
+	CFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) --no-standard-libraries -O2 -DWASM=yes
+	CXXFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) --no-standard-libraries -O2 -DWASM=yes
+	LDFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -Wl,--allow-undefined -Wl,--import-memory -Wl,--export-dynamic -Wl,--no-entry -O2 
+	WASMLDFLAGS=-L$(WASI_SYSROOT)/lib/wasm32-wasi --allow-undefined --import-memory --export-dynamic --no-entry -lc
+	LDFLAGS+=-nostartfile
+	EXECEXT=.wasm
+	UNDEF_SYMS=-u globalHandler
+endif
+
