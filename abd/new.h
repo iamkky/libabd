@@ -2,7 +2,7 @@
 #define _ABDNEW_H_
 
 #include <stdlib.h>
-#include <io/errLogf.h>
+#include <abd/errLog.h>
 
 #define nullAssert(p)			((p)==NULL? (errLogf("NullException: %s[%d]: %s\n", __FILE__, __LINE__, #p), 1) : 0)
 
@@ -31,6 +31,5 @@ void *ptr;
 }
 #define CNew(class, ...)		class##Constructor(#class, CSMalloc_debug(sizeof(*(class)0), __FILE__, __LINE__), ##__VA_ARGS__)
 #endif
-
 
 #endif
