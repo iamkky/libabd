@@ -74,12 +74,12 @@ int stringBufferCheckExpand(StringBuffer self, int extension)
         if(self->size + extension >= self->allocated){
                 if(self->allocated == 0){
 			// Alloc required space plus 128 extra bytes to avoid recorrent calls to realloc
-                        self->buffer = malloc(sizeof(char *) * (extension + 128));
+                        self->buffer = malloc(sizeof(char) * (extension + 128));
 			if(self->buffer == NULL) return 0;
                         self->allocated = extension + 128;
                 }else{
 			// Alloc required space plus 50% of current size to avoid recurrent calls to realloc
-                        self->buffer = realloc(self->buffer, sizeof(char *) * (self->allocated + extension + (self->size/2) + 1));
+                        self->buffer = realloc(self->buffer, sizeof(char) * (self->allocated + extension + (self->size/2) + 1));
 			if(self->buffer == NULL) return 0;
                         self->allocated = self->allocated + extension + (self->size/2) + 1;
                 }
@@ -96,7 +96,7 @@ int len;
 	if(!str) return NULL;
 
 	if(stringBufferCheckExpand(self, len = stringBufferLength(str))){
-		strcat(self->buffer, str->buffer);
+		strcpy(self->buffer + self->size, str->buffer);
 		self->size += len;
 		return self;
 	}
@@ -139,7 +139,7 @@ int len;
 	if(!str) return NULL;
 
 	if(stringBufferCheckExpand(self, len = strlen(str))){
-		strcat(self->buffer, str);
+		strcpy(self->buffer + self->size, str);
 		self->size += len;
 		return self;
 	}
@@ -154,9 +154,8 @@ int len;
 	if(!self) return NULL;
 
 	if(stringBufferCheckExpand(self, 1)){
-		len = strlen(self->buffer);
-		self->buffer[len] = ch;
-		self->buffer[len+1] = 0;
+		self->buffer[self->size] = ch;
+		self->buffer[self->size+1] = 0;
 		self->size += 1;
 		return self;
 	}
