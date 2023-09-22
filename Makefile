@@ -1,4 +1,5 @@
 
+include make.wasm
 
 LIB=libabd.a
 DIRS=mpaland io string safe sort
@@ -8,7 +9,7 @@ DIRS=mpaland io string safe sort
 all: ${LIB}
 
 ${LIB}: ${DIRS}
-	${AR} rcs ${LIB} */*.o
+	$(AR) rcs ${LIB} */*.o
 
 $(DIRS):
 	${MAKE} -C $@ $(MAKECMDGOALS)
