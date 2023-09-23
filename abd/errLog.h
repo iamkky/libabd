@@ -3,7 +3,7 @@
 
 #include <stdarg.h>
 
-int errLogfv(const char *fmt, va_list args);
+int errLogvf(const char *fmt, va_list args);
 int errLogf(const char *fmt, ...);
 
 #endif

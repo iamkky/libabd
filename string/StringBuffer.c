@@ -104,11 +104,41 @@ int len;
 	return NULL;
 }
 
-int stringBufferAddf(StringBuffer self, char *fmt, ... )
+int stringBufferAddvf(StringBuffer self, const char *fmt, va_list args )
 {
-va_list	args;
 int	len;
 
+	if(self==NULL) return -1;
+	if(fmt==NULL) return -1;
+
+	len = vsnprintf(self->buffer + self->size, self->allocated - self->size, fmt, args);
+
+	if(len >= self->allocated - self->size){
+		if(stringBufferCheckExpand(self, len)){
+			len = vsnprintf(self->buffer + self->size, self->allocated - self->size, fmt, args);
+		}else{
+			return -1;
+		}
+	}
+
+	self->size = self->size + len;
+
+	return 0;
+}
+
+
+int stringBufferAddf(StringBuffer self, const char *fmt, ... )
+{
+va_list	args;
+int	ret;
+
+	va_start(args, fmt);
+	ret = stringBufferAddvf(self, fmt, args);
+	va_end(args);
+
+	return ret;
+
+/*
 	if(self==NULL) return -1;
 	if(fmt==NULL) return -1;
 
@@ -129,6 +159,7 @@ int	len;
 	self->size = self->size + len;
 
 	return 0;
+*/
 }
 
 StringBuffer stringBufferAddStr(StringBuffer self, const char *str)
