@@ -7,7 +7,7 @@ char *strEscapeJson(char *src)
 StringBuffer	dst;
 char		*ret;
 
-	dst = StringBufferNew(strlen(src)*1.6);
+	dst = StringBufferNew(strlen(src) * 2);
 	if(dst==NULL) return NULL;
 
 	while(*src){
@@ -16,7 +16,7 @@ char		*ret;
 		case '\n': stringBufferAddStr(dst, "\\n"); break;
 		case '\t': stringBufferAddStr(dst, "\\t"); break;
 		case '\r': stringBufferAddStr(dst, "\\r"); break;
-		default  : stringBufferAddStr(dst, src); break;
+		default  : stringBufferAddChar(dst, *src); break;
 		}
 		src++;
 	}
