@@ -53,6 +53,7 @@ void stringBufferReplaceBuffer(StringBuffer self, char *buffer, int allocated)
 void stringBufferHardsetLength(StringBuffer self, int len)
 {
 	if(self==NULL) return;
+	self->buffer[len] = 0;
 	self->size = len;
 }
 
@@ -86,6 +87,15 @@ int stringBufferCheckExpand(StringBuffer self, int extension)
         }
 
 	return 1;
+}
+
+int stringBufferCompare(StringBuffer self, char *str)
+{
+	if(!self) return 0;
+	if(!str) return 0;
+	if(!(self->buffer)) return 0;
+
+	return strcmp(self->buffer, str);
 }
 
 StringBuffer stringBufferAddSb(StringBuffer self, StringBuffer str)
@@ -126,7 +136,6 @@ int	len;
 	return 0;
 }
 
-
 int stringBufferAddf(StringBuffer self, const char *fmt, ... )
 {
 va_list	args;
@@ -137,29 +146,6 @@ int	ret;
 	va_end(args);
 
 	return ret;
-
-/*
-	if(self==NULL) return -1;
-	if(fmt==NULL) return -1;
-
-	va_start(args, fmt);
-	len = vsnprintf(self->buffer + self->size, self->allocated - self->size, fmt, args);
-	va_end(args);
-
-	if(len >= self->allocated - self->size){
-		// Overflow
-		// errLogf("Overflow: %d", self->allocated);
-		if(stringBufferCheckExpand(self, len)){
-			va_start(args, fmt);
-			len = vsnprintf(self->buffer + self->size, self->allocated - self->size, fmt, args);
-			va_end(args);
-		}
-	}
-
-	self->size = self->size + len;
-
-	return 0;
-*/
 }
 
 StringBuffer stringBufferAddStr(StringBuffer self, const char *str)

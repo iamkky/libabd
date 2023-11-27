@@ -18,6 +18,9 @@ char		*stringBufferGetBuffer(StringBuffer w);
 void		stringBufferFree(StringBuffer w);
 int		stringBufferCheckExpand(StringBuffer self, int extension);
 void		stringBufferReplaceBuffer(StringBuffer self, char *buffer, int allocated);
+
+int		stringBufferCompare(StringBuffer self, char *src2);
+
 StringBuffer	stringBufferAddSb(StringBuffer self, StringBuffer str);
 StringBuffer	stringBufferAddStr(StringBuffer self, const char *str);
 StringBuffer	stringBufferAddChar(StringBuffer self, char ch);
