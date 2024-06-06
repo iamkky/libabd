@@ -5,6 +5,7 @@
 #include <abd/errLog.h>
 
 #define nullAssert(p)			((p)==NULL? (errLogf("NullException: %s[%d]: %s\n", __FILE__, __LINE__, #p), 1) : 0)
+#define CNullAssert(p)			((p)==NULL? (errLogf("NullException: %s[%d]: %s\n", __FILE__, __LINE__, #p), 1) : 0)
 
 #define CSMalloc(class)			malloc(sizeof(*(class)0))
 

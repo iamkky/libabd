@@ -1,8 +1,19 @@
 
+HEADERX=headerx
+
+.PHONY: all clean extractheaders ${DIRS}
+
+all:: extractheaders ${DIRS} ${OBJS}
+
+ifdef HEADEREXTRACTLIST
+extractheaders:
+	$(HEADERX) ${HEADEREXTRACTLIST}
+endif
+
 all:: ${OBJS}
 
 test: test.o ${OBJS} -lm
 
 clean::
-	rm -f ${OBJS} test
+	rm -f ${OBJS} test *.c.h
 

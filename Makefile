@@ -2,7 +2,7 @@
 include make.wasm
 
 LIB=libabd.a
-DIRS=mpaland io string safe sort
+DIRS=mpaland io string safe sort data
 
 .PHONY: all $(DIRS)
 
