@@ -4,6 +4,8 @@ ifeq ($(WASI_SYSROOT),)
 WASI_SYSROOT=/opt/wasi-sdk/share/wasi-sysroot
 endif
 
+WASMDEBUG=-g
+
 ifeq ($(WASM),yes)
 	CC=clang
 	CXX=clang++
@@ -14,9 +16,9 @@ ifeq ($(WASM),yes)
 	LDFLAGS+=-nostartfile
 
 	UNDEF_SYMS=-u globalHandler
-	CFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -O2 -DWASM=yes -DUSE_MP_PRINTF=yes
-	CXXFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -O2 -DWASM=yes -DUSE_MP_PRINTF=yes
-	LDFLAGS+=--target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -Wl,--allow-undefined -Wl,--import-memory -Wl,--export-dynamic -Wl,--no-entry -O2 
-	WASMLDFLAGS=-L$(WASI_SYSROOT)/lib/wasm32-wasi --allow-undefined --import-memory --export-dynamic --no-entry -lc
+	CFLAGS+=$(WASMDEBUG) --target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -O2 -DWASM=yes -DUSE_MP_PRINTF=yes
+	CXXFLAGS+=$(WASMDEBUG) --target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -O2 -DWASM=yes -DUSE_MP_PRINTF=yes
+	LDFLAGS+=$(WASMDEBUG) --target=wasm32-unknown-wasi --sysroot $(WASI_SYSROOT) -Wl,--allow-undefined -Wl,--import-memory -Wl,--export-dynamic -Wl,--no-entry -O2 
+	WASMLDFLAGS=$(WASMDEBUG) -L$(WASI_SYSROOT)/lib/wasm32-wasi --allow-undefined --import-memory --export-dynamic --no-entry -lc
 endif
 
