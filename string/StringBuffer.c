@@ -6,6 +6,8 @@
 #include <abd/errLog.h>
 #include <abd/StringBuffer.h>
 
+static char *empty = "";
+
 StringBuffer StringBufferNew(int initialSize)
 {
 StringBuffer self;
@@ -66,6 +68,9 @@ int stringBufferLength(StringBuffer self)
 char *stringBufferGetBuffer(StringBuffer self)
 {
 	if(self==NULL) return NULL;
+
+	if(self->buffer==NULL) return empty
+
 	return self->buffer;
 }
 
