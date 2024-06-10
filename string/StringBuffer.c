@@ -69,7 +69,7 @@ char *stringBufferGetBuffer(StringBuffer self)
 {
 	if(self==NULL) return NULL;
 
-	if(self->buffer==NULL) return empty
+	if(self->buffer==NULL) return empty;
 
 	return self->buffer;
 }
