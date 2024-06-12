@@ -15,6 +15,9 @@ Destructor(AVec);
 int aVecAppend(AVec self, void *item);
 void *aVecGetItem(AVec self, int i);
 
+int aVecTruncate(AVec self, int size);
+int aVecRemoveItem(AVec self, int i);
+
 static inline int aVecGetSize(AVec self)
 {
 	return self->size;
@@ -102,6 +105,31 @@ void *aVecGetItem(AVec self, int i)
 
 	return NULL;
 }
+
+int aVecTruncate(AVec self, int size)
+{
+	if(nullAssert(self)) return -1;
+
+	if(size<self->size && size>=0) self->size = size;
+
+	return 0;
+}
+
+int aVecRemoveItem(AVec self, int i)
+{
+int c;
+
+	if(nullAssert(self)) return -1;
+
+	for(c=i; c<aVecGetSize(self)-1; c++){
+		self->items[c] = self->items[c+1];
+	}
+
+	if(self->size>0) self->size -= 1;
+
+	return 0;
+}
+
 
 
 
