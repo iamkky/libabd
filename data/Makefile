@@ -1,8 +1,8 @@
 
 CFLAGS+=-I..
-OBJS=AVec.o
+OBJS=AVec.o AData.o
 
-HEADEREXTRACTLIST=AVec.c
+HEADEREXTRACTLIST=AVec.c AData.c
 
 include ../make.wasm
 include ../make.rules
