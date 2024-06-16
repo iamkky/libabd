@@ -1,31 +1,24 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+// Implements a C representation for genetic data values.
+// A data value can be a string (char *), an integer, a double, an array of data values, or an object of data values indexed by strings (char *).
+//
+// The type_size field is used to indicate the type of data contained in value and, in cases where the type is an object or array, the size of the object or array.
+//
+// The most significant 4 bits of type_size are used to indicate the type.
+// The remaining bits of type_size represent the size.
+//
+// Removal of elemets from arrays or objects are not implemented
+//
+
+//HEADERX(../abd/AData.c.h,_ABD_AADATA_H_)
+#include <inttypes.h>
+#include <stdint.h>
 #include <limits.h>
-#include "abd/printf.h"
-#include "abd/errLog.h"
-
-#define printf errLogf
-//#include "abd/debug.h" 
-
-// Implements a C representation for genetic data values
-// A data value can be a string (char *), a integer, a double, an array of data values or a Object of data values indexed by strings (char*)
-//
-// type_size is used to indicate type of the data contained in value and size of the object and array types in case where type is object or array.
-//
-// Most significate 4 bits are used to indicate the type
-// The rest of the type_size if the size
-//
+#include <abd/new.h>
 
 #define TYPE_SHIFT	((sizeof(int) * CHAR_BIT) - 4)
 
 #define TYPE_MASK	(((unsigned int)0xf) << TYPE_SHIFT)
 #define SIZE_MASK	(~TYPE_MASK)
-
-//HEADERX(AAData.c.h,_ABD_AADATA_H_)
-#include <inttypes.h>
-#include <stdint.h>
-#include <abd/new.h>
 
 enum ADataTypes {
 		ADATA_NULL	= 0  << TYPE_SHIFT,
@@ -52,13 +45,13 @@ Class(AData) {
 Constructor	(AData);
 Destructor	(AData);
 
-int inline aDataGetType(AData self)
+int inline static aDataGetType(AData self)
 {
 	if(nullAssert(self)) return ADATA_UNDEFINED;
 	return self->type_size & TYPE_MASK;
 }
 
-int inline aDataGetSize(AData self)
+int inline static aDataGetSize(AData self)
 {
 	if(nullAssert(self)) return 0;
 	if(aDataGetType(self)==ADATA_ARRAY || aDataGetType(self)==ADATA_OBJECT) return self->type_size & SIZE_MASK;
@@ -82,6 +75,12 @@ int		aDataSet_k(AData self, const char *key, AData e);
 int		aDataAdd_i(AData self, AData e);
 
 //ENDX
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "abd/printf.h"
+#include "abd/errLog.h"
 
 Constructor(AData)
 {
