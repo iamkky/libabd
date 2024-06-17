@@ -3,7 +3,7 @@ libabd
 Small support library for C projects
 
 Provides:
-	string/StringBuffer class
+	string/AString class
 	strinf/strf
 
 Including some alternatives functions, imported from external projects, to original WASI-LIBC functions:

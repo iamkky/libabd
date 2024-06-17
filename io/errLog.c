@@ -1,14 +1,14 @@
 #include <stdarg.h>
 #include <abd/printf.h>
-#include <abd/StringBuffer.h>
+#include <abd/AString.c.h>
 
 #ifdef WASM
 
-extern void consoleLogMsg(StringBuffer w);
+extern void consoleLogMsg(AString w);
 
 #else
 
-void consoleLogMsg(StringBuffer st)
+void consoleLogMsg(AString st)
 {
 	if(st && st->buffer) fprintf(stderr, "%s", st->buffer);
 }
@@ -17,19 +17,19 @@ void consoleLogMsg(StringBuffer st)
 
 int errLogvf(const char *fmt, va_list args)
 {
-StringBuffer	str;
+AString	str;
 
-	str = StringBufferNew(128);
-	stringBufferAddvf(str, fmt, args);
+	str = CNew(AString,128);
+	aStringAddvf(str, fmt, args);
 /*
 	if((len=vsnprintf(str->buffer, 1024, fmt, args))>=1024){
-		stringBufferFree(str);
-		str = StringBufferNew(len+1);
+		aStringFree(str);
+		str = AStringNew(len+1);
 		vsnprintf(str->buffer, len + 1, fmt, args);
 	};
 */
 	consoleLogMsg(str);
-	stringBufferFree(str);
+	AStringFree(str);
 	
 	return 0;
 }
