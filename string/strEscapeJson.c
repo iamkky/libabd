@@ -5,9 +5,11 @@
 char *strEscapeJson(char *src)
 {
 AString	dst;
-char		*ret;
+char	*ret;
 
-	dst = CNew(AString,strlen(src) * 2);
+	if(src==NULL) return NULL;
+
+	dst = CNew(AString, strlen(src) * 2);
 	if(dst==NULL) return NULL;
 
 	while(*src){
@@ -21,9 +23,8 @@ char		*ret;
 		src++;
 	}
 
-	ret = aStringGetBuffer(dst);
+	ret = aStringBufferDup(dst);
 
-	aStringReplaceBuffer(dst, NULL, 0);
 	AStringFree(dst);
 
 	return ret;

@@ -13,6 +13,7 @@ Destructor(AString);
 
 void	aStringHardsetLength(AString self, int len);
 int	aStringLength(AString w);
+char	*aStringBufferDup(AString w);
 char	*aStringGetBuffer(AString w);
 int	aStringCheckExpand(AString self, int extension);
 void	aStringReplaceBuffer(AString self, char *buffer, int allocated);
@@ -89,6 +90,15 @@ int aStringLength(AString self)
 {
 	if(nullAssert(self)) return -1;
 	return self->size;
+}
+
+char *aStringBufferDup(AString self)
+{
+	if(nullAssert(self)) return NULL;
+
+	if(self->buffer==NULL) return strdup(empty);
+
+	return strdup(self->buffer);
 }
 
 char *aStringGetBuffer(AString self)
