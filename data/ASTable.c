@@ -3,20 +3,27 @@
 //HEADERX(../abd/ASTable.c.h,_ABD_ASTABLE_H_)
 #include <abd/new.h>
 
+enum ASTableTypes {ASTABLE_UNDEFINED=1, ASTABLE_DOUBLE, ASTABLE_INTEGER, ASTABLE_CHARPTR, ASTABLE_NOTYPE};
+
+static char  *ASTableTypeName[] = {"null", "undefined", "double", "integer", "charptr"};
+
 Class(ASTable) {
 	unsigned int	n_cols;
 	unsigned int	n_rows;
 	unsigned int	rows_allocated;
-	char		**header;
+	char		**header_title;
+	int		*header_type;
 	char		***rows;
 };
 
 Constructor(ASTable, int n_cols);
 Destructor(ASTable);
 
+char *aSTableGetTypeName(ASTable self, int col);
+
 int aSTableSetValue(ASTable self, int row, int col, char *value);
-int aSTableSetHeader(ASTable self, int col, char *value);
-int aSTablePrint(ASTable self);
+int aSTableSetHeader(ASTable self, int col, char *title, int type);
+void aSTablePrint(ASTable self);
 
 unsigned int inline static aSTableGetNRows(ASTable self)
 {
@@ -29,7 +36,7 @@ unsigned int inline static aSTableGetNCols(ASTable self)
 	if(nullAssert(self)) return 0;
 	return self->n_cols;
 }
-//
+
 //ENDX
 
 #include <stdlib.h>
@@ -45,11 +52,19 @@ Constructor(ASTable, int n_cols)
 	self->n_rows = 0;
 	self->rows_allocated = 0;
 
-	self->header = malloc(sizeof(char *) * n_cols);
-	if(nullAssert(self->header)) {
+	self->header_title = malloc(sizeof(char *) * n_cols);
+	if(nullAssert(self->header_title)) {
 		free(self);
 		return NULL;
 	}
+
+	self->header_type = malloc(sizeof(int) * n_cols);
+	if(nullAssert(self->header_type)) {
+		free(self->header_title);
+		free(self);
+		return NULL;
+	}
+
 	self->rows = NULL;
 
 	return self;
@@ -60,10 +75,10 @@ Destructor(ASTable)
 int c,r;
 
 	if(nullAssert(self)) return;
-	if(nullAssert(self->header)) return;
+	if(nullAssert(self->header_title)) return;
 
 	for(c=0; c<self->n_cols; c++){
-		if(self->header[c]) free(self->header[c]);
+		if(self->header_title[c]) free(self->header_title[c]);
 	}
 
 	if(self->rows){
@@ -79,6 +94,19 @@ int c,r;
 	}
 
 	free(self);
+}
+
+char *aSTableGetTypeName(ASTable self, int col)
+{
+int type;
+
+	if(col<0 || col> self->n_cols) return "out of bound";
+
+	type = self->header_type[col];
+
+	if(type>=ASTABLE_NOTYPE || type<0) return "notype";
+
+	return ASTableTypeName[type];
 }
 
 // From: http://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
@@ -117,11 +145,12 @@ int new_size, c;
 	return 1;
 }
 
-int aSTableSetHeader(ASTable self, int col, char *value)
+int aSTableSetHeader(ASTable self, int col, char *title, int type)
 {
 	if(col>=self->n_cols) return -1;
 
-	self->header[col] = value;
+	self->header_title[col] = title;
+	self->header_type[col] = type;
 	
 	return 0;
 }
@@ -150,11 +179,12 @@ void aSTablePrint(ASTable self)
 int c,r;
 
 	for(c=0; c<self->n_cols; c++){
-		if(self->header[c]!=NULL){
-			printf("%s", self->header[c]);
+		if(self->header_title[c]!=NULL){
+			printf("%s", self->header_title[c]);
 		}else{
 			printf("(null)");
 		}
+		printf("(%s)", aSTableGetTypeName(self, c));
 		if(c!=self->n_cols-1) printf(" | "); else printf("\n");
 	}
 
