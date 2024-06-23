@@ -117,6 +117,8 @@ char *aSTableGetTypeName(ASTable self, int col)
 {
 int type;
 
+	if(nullAssert(self)) return NULL;
+
 	if(col<0 || col> self->n_cols) return "out of bound";
 
 	type = self->cols_type[col];
@@ -141,7 +143,7 @@ int c;
 	return v + 1;
 }
 
-int aSTableCheckExpand(ASTable self, int extension)
+int static aSTableCheckExpand(ASTable self, int extension)
 {
 int new_size, c;
 
@@ -167,7 +169,9 @@ int new_size, c;
 }
 
 int aSTableSetHeader(ASTable self, int col, char *title, int type)
-{
+{  
+	if(nullAssert(self)) return -1;
+
 	if(col>=self->n_cols) return -1;
 
 	self->cols_title[col] = title;
@@ -187,10 +191,11 @@ int static aSTableCheckRow(ASTable self, int row)
 
 int aSTableSetValueAsDouble(ASTable self, int row, int col, double value)
 {
-	if(col>=self->n_cols) return -1;
+	if(nullAssert(self)) return -1;
+	if(col>=self->n_cols) return -2;
 
-	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -2;
-	if(aSTableCheckRow(self, row) == 0) return -3;
+	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -3;
+	if(aSTableCheckRow(self, row) == 0) return -4;
 
 	self->rows[row][col].d = value;
 	if(row>=self->n_rows) self->n_rows = row + 1;
@@ -200,10 +205,11 @@ int aSTableSetValueAsDouble(ASTable self, int row, int col, double value)
 
 int aSTableSetValueAsInteger(ASTable self, int row, int col, int value)
 {
-	if(col>=self->n_cols) return -1;
+	if(nullAssert(self)) return -1;
+	if(col>=self->n_cols) return -2;
 
-	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -2;
-	if(aSTableCheckRow(self, row) == 0) return -3;
+	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -3;
+	if(aSTableCheckRow(self, row) == 0) return -4;
 
 	self->rows[row][col].i = value;
 	if(row>=self->n_rows) self->n_rows = row + 1;
@@ -214,10 +220,11 @@ int aSTableSetValueAsInteger(ASTable self, int row, int col, int value)
 
 int aSTableSetValueAsCharPtr(ASTable self, int row, int col, char *value)
 {
-	if(col>=self->n_cols) return -1;
+	if(nullAssert(self)) return -1;
+	if(col>=self->n_cols) return -2;
 
-	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -2;
-	if(aSTableCheckRow(self, row) == 0) return -3;
+	if(aSTableCheckExpand(self, (row + 1) - self->n_rows)==0) return -3;
+	if(aSTableCheckRow(self, row) == 0) return -4;
 
 	self->rows[row][col].c_ptr = value ? strdup(value) : NULL; 
 	if(row>=self->n_rows) self->n_rows = row + 1;
@@ -228,6 +235,11 @@ int aSTableSetValueAsCharPtr(ASTable self, int row, int col, char *value)
 void aSTablePrint(ASTable self)
 {
 int c,r;
+
+	if(nullAssert(self)){
+		printf("(null table)");
+		return;
+	}
 
 	for(c=0; c<self->n_cols; c++){
 		if(self->cols_title[c]!=NULL){
