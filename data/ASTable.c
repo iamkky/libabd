@@ -10,6 +10,7 @@
 #include <abd/new.h>
 
 enum ASTableTypes {ASTABLE_UNDEFINED=1, ASTABLE_DOUBLE, ASTABLE_INTEGER, ASTABLE_CHARPTR, ASTABLE_NOTYPE};
+enum ASTableSortOrder {ASTABLE_ASCENDANT=1, ASTABLE_DESCENDANT=-1};
 
 static char  *ASTableTypeName[] = {"null", "undefined", "double", "integer", "charptr"};
 
@@ -21,13 +22,15 @@ typedef union {
 	char	*c_ptr;
 } ASTableData;
 
+typedef ASTableData *ASTableRow;
+
 Class(ASTable) {
 	unsigned int	n_cols;
 	unsigned int	n_rows;
 	unsigned int	rows_allocated;
 	char		**cols_title;
 	int		*cols_type;
-	ASTableData	**rows;
+	ASTableRow	*rows;
 };
 
 Constructor(ASTable, int n_cols);
@@ -40,6 +43,8 @@ int aSTableSetValueAsInteger(ASTable self, int row, int col, int value);
 int aSTableSetValueAsCharPtr(ASTable self, int row, int col, char *value);
 
 int aSTableSetHeader(ASTable self, int col, char *title, int type);
+
+void aSTableDataPrint(ASTableData data, int type);
 void aSTablePrint(ASTable self);
 
 unsigned int inline static aSTableGetNRows(ASTable self)
@@ -54,12 +59,20 @@ unsigned int inline static aSTableGetNCols(ASTable self)
 	return self->n_cols;
 }
 
+///////////////////////////////
+// Utility Functions
+
+void aSTableSort(ASTable self, int n_keys, int *keys, int order);
+
 //ENDX
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "abd/errLog.h"
+#define USE_MUSL_SORT yes
+#include "abd/sort.h"
 
 Constructor(ASTable, int n_cols)
 {
@@ -155,9 +168,9 @@ int new_size, c;
 			new_size = upperPowerOfTwo(self->n_rows + extension);
 
                 if(self->rows_allocated == 0)
-                        self->rows = malloc(sizeof(ASTableData *) * new_size);
+                        self->rows = malloc(sizeof(ASTableRow) * new_size);
                 else
-                        self->rows = realloc(self->rows, sizeof(ASTableData *) * new_size);
+                        self->rows = realloc(self->rows, sizeof(ASTableRow) * new_size);
 
 		if(self->rows == NULL) return 0;
 
@@ -232,6 +245,16 @@ int aSTableSetValueAsCharPtr(ASTable self, int row, int col, char *value)
 	return 0;
 }
 
+void aSTableDataPrint(ASTableData data, int type)
+{
+	switch(type){
+	case ASTABLE_DOUBLE:  printf("%f", data.d);     break;
+	case ASTABLE_INTEGER: printf("%d", data.i);     break;
+	case ASTABLE_CHARPTR: printf("%s", data.c_ptr); break;
+	default: printf("(unknow)"); break;
+	}
+}
+
 void aSTablePrint(ASTable self)
 {
 int c,r;
@@ -256,14 +279,90 @@ int c,r;
 			if(self->rows[r]==NULL){
 				printf("(null)");
 			}else{
-				switch(self->cols_type[c]){
-				case ASTABLE_DOUBLE:  printf("%lf", self->rows[r][c].d);    break;
-				case ASTABLE_INTEGER: printf("%d", self->rows[r][c].i);     break;
-				case ASTABLE_CHARPTR: printf("%s", self->rows[r][c].c_ptr); break;
-				default: printf("(unknow)"); break;
-				}
+				aSTableDataPrint(self->rows[r][c], self->cols_type[c]);
 			}
 			if(c!=self->n_cols-1) printf(" | "); else printf("\n");
 		}
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ASTableSort family of functions
+
+
+// Private defined here because it's only used by sort family
+struct sort_key_t {
+	ASTable	table;
+	int	n_keys;
+	int	*keys;
+	int	order;
+};
+
+// Compares to single Data Cells, considering type
+int static aSTableDataCmp(ASTableData d0, ASTableData d1, int type)
+{
+	switch(type){
+	case ASTABLE_DOUBLE: return (int) signbit(d0.i - d1.i);
+	case ASTABLE_INTEGER: return d0.i - d1.i;
+	case ASTABLE_CHARPTR:
+		if(d0.c_ptr == NULL && d1.c_ptr == NULL) return 0;
+		if(d0.c_ptr == NULL)  return -1;
+		if(d1.c_ptr == NULL)  return 1;
+		return strcmp(d0.c_ptr, d1.c_ptr);
+	}
+
+	return 0;
+}
+
+// Sort comparator function used by qsort
+// This function receives pointers to rows to compare.
+int static aSTableRowCmp(const void *p0, const void *p1, const void *extra)
+{
+ASTableRow	*d0, *d1;
+ASTable		table;
+int		n_keys, *keys, order;
+int		col, c, cmp;
+
+	// Special NULL treatment: Comparison result for NULLs is still to be defined.
+	// This affects the placement of undefined lines, either at the beginning or at the bottom.
+	if(p0 == NULL && p1 == NULL) return 0;
+	if(p0 == NULL)  return -1;
+	if(p1 == NULL)  return 1;
+
+	// Copying to local variables to improve readability
+	// Hope compiler removes this
+	table = ((struct sort_key_t *)extra)->table;
+	n_keys = ((struct sort_key_t *)extra)->n_keys;
+	keys = ((struct sort_key_t *)extra)->keys;
+	order = ((struct sort_key_t *)extra)->order;
+
+	d0 = (ASTableRow *)p0;
+	d1 = (ASTableRow *)p1;
+
+	// Traversing through keys and sorting
+	for(c=0; c<n_keys; c++){
+		col = keys[c];
+		cmp = aSTableDataCmp((*d0)[col], (*d1)[col], table->cols_type[col]);
+		if(cmp!=0) return order * cmp;
+	}
+
+	return 0;
+}
+
+void aSTableSort(ASTable self, int n_keys, int *keys, int order)
+{
+struct sort_key_t sort_key;
+
+	if(nullAssert(self)) return;
+	if(nullAssert(keys)) return;
+
+	if(order!=-1 && order!=1) return;
+	if(n_keys<0 || n_keys>self->n_cols) return;
+
+	sort_key.table  = self;
+	sort_key.n_keys = n_keys;
+	sort_key.keys   = keys;
+	sort_key.order  = order;
+
+	qsort_r(self->rows, self->n_rows, sizeof(ASTableRow), aSTableRowCmp, &sort_key);
 }
