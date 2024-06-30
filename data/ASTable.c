@@ -26,8 +26,10 @@ typedef ASTableData *ASTableRow;
 
 Class(ASTable) {
 	unsigned int	n_cols;
+	unsigned int	n_cols_allocated;
 	unsigned int	n_rows;
 	unsigned int	rows_allocated;
+	int		**cols_hash;
 	char		**cols_title;
 	int		*cols_type;
 	ASTableRow	*rows;
@@ -70,28 +72,110 @@ void aSTableSort(ASTable self, int n_keys, int *keys, int order);
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 #include "abd/errLog.h"
 #define USE_MUSL_SORT yes
 #include "abd/sort.h"
 
+// From: http://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
+unsigned static upperPowerOfTwo(unsigned v)
+{
+int c;
+
+	if(v<=2) return v;
+
+	v--;
+	for(c=1; c<(sizeof(unsigned)*8); c<<=1){
+		v |= v >> c;
+	}
+	
+	return v + 1;
+}
+
+/*
+http://www.isthe.com/chongo/tech/comp/fnv/
+
+http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
+
+The FNV_prime is dependent on the size of the hash:
+
+    32 bit FNV_prime   = 224 + 28 + 0x93  = 16777619
+    64 bit FNV_prime   = 240 + 28 + 0xb3  = 1099511628211
+    128 bit FNV_prime  = 288 + 28 + 0x3b  = 309485009821345068724781371
+    256 bit FNV_prime  = 2168 + 28 + 0x63 = 374144419156711147060143317175368453031918731002211
+    512 bit FNV_prime  = 2344 + 28 + 0x57 = 35835915874844867368919076489095108449946327955754392558399825615420669938882575
+                                            126094039892345713852759
+    1024 bit FNV_prime = 2680 + 28 + 0x8d = 50164565101131186554345988110352789550307653454047907443030175238311120551081474
+                                            51509157692220295382716162651878526895249385292291816524375083746691371804094271
+                                            873160484737966720260389217684476157468082573 
+
+Part of the magic of FNV is the selection of the FNV_prime for a given sized unsigned integer.
+Some primes do hash better than other primes for a given integer size.
+The offset_basis for FNV-1 is dependent on n, the size of the hash:
+
+    32 bit offset_basis   = 2166136261
+    64 bit offset_basis   = 14695981039346656037
+    128 bit offset_basis  = 144066263297769815596495629667062367629
+    256 bit offset_basis  = 100029257958052580907070968620625704837092796014241193945225284501741471925557
+    512 bit offset_basis  = 965930312949666949800943540071631046609041874567263789610837432943446265799458293
+                            2197716438449813051892206539805784495328239340083876191928701583869517785
+    1024 bit offset_basis = 141977950649476210687220706414032183208806227954419339608784749146175827232522967
+                            323037177221508640965212023555493656281746691085718147604710150761480297559698040
+                            773201576924585630032153049571501574036444603635505054127112859663616102678680828
+                            93823963790439336411086884584107735010676915 
+*/
+
+/*
+From:
+http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-reference-source
+*/
+
+#if UINT_MAX == 4294967295U
+	#define FNV_PRIME ((unsigned)0x01000193)
+#elif UINT_MAX == 18446744073709551615U
+	#define FNV_PRIME ((unsigned)0x100000001b3U)
+#else
+	#error "Unsupported int size"
+#endif
+
+unsigned fnv_32a_str(const char *str, unsigned hval)
+{
+    unsigned char *s = (unsigned char *)str;
+
+    while (*s) {
+	hval ^= (unsigned) *s++;
+	hval *= FNV_PRIME;
+
+	// 32 bits optimization
+	//hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+
+	// 64 bits optimization
+	//hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
+    }
+
+    return hval;
+}
+
 Constructor(ASTable, int n_cols)
 {
+int cols_allocated;
+
 	CInit(ASTable);
 
-	self->n_cols = n_cols;
 	self->n_rows = 0;
 	self->rows_allocated = 0;
 
-	self->cols_title = malloc(sizeof(char *) * n_cols);
-	if(nullAssert(self->cols_title)) {
-		free(self);
-		return NULL;
-	}
+	self->n_cols = n_cols;
+	self->n_cols_allocated = upperPowerOfTwo(self->n_cols);
 
-	self->cols_type = malloc(sizeof(int) * n_cols);
-	if(nullAssert(self->cols_type)) {
-		free(self->cols_title);
-		free(self);
+	self->cols_title = malloc(sizeof(char *) * self->n_cols_allocated);
+	self->cols_type = malloc(sizeof(int) * self->n_cols_allocated);
+	self->cols_hash = malloc(sizeof(int) * self->n_cols_allocated);
+
+	if(nullAssert(self->cols_title) || nullAssert(self->cols_type) || nullAssert(self->cols_hash)){
+		if(self->cols_title) free(self->cols_title);
+		if(self->cols_type) free(self->cols_type);
+		if(self->cols_hash) free(self->cols_hash);
 		return NULL;
 	}
 
@@ -139,21 +223,6 @@ int type;
 	if(type>=ASTABLE_NOTYPE || type<0) return "notype";
 
 	return ASTableTypeName[type];
-}
-
-// From: http://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
-unsigned static upperPowerOfTwo(unsigned v)
-{
-int c;
-
-	if(v<=2) return v;
-
-	v--;
-	for(c=1; c<(sizeof(unsigned)*8); c<<=1){
-		v |= v >> c;
-	}
-	
-	return v + 1;
 }
 
 int static aSTableCheckExpand(ASTable self, int extension)
@@ -298,11 +367,11 @@ struct sort_key_t {
 	int	order;
 };
 
-// Compares to single Data Cells, considering type
+// Compares two single Data Cells, considering type
 int static aSTableDataCmp(ASTableData d0, ASTableData d1, int type)
 {
 	switch(type){
-	case ASTABLE_DOUBLE: return (int) signbit(d0.i - d1.i);
+	case ASTABLE_DOUBLE: return (int) signbit(d0.d - d1.d);
 	case ASTABLE_INTEGER: return d0.i - d1.i;
 	case ASTABLE_CHARPTR:
 		if(d0.c_ptr == NULL && d1.c_ptr == NULL) return 0;
