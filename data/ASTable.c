@@ -96,41 +96,25 @@ unsigned static upperPowerOfTwo(unsigned v)
 }
 
 /*
-http://www.isthe.com/chongo/tech/comp/fnv/
+fnv_32a_str: Generates a string hash using FNV algorithm
 
-http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
+FNV is Fowler/Noll/Vo hash Functions. (http://www.isthe.com/chongo/tech/comp/fnv/)
 
-The FNV_prime is dependent on the size of the hash:
+--------------------------------------------------------------------------------------------------------------------
+The FNV_prime is dependent on the size of the hash: (http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param)
 
-32 bit FNV_prime   = 224 + 28 + 0x93  = 16777619
-64 bit FNV_prime   = 240 + 28 + 0xb3  = 1099511628211
-128 bit FNV_prime  = 288 + 28 + 0x3b  = 309485009821345068724781371
-256 bit FNV_prime  = 2168 + 28 + 0x63 = 374144419156711147060143317175368453031918731002211
-512 bit FNV_prime  = 2344 + 28 + 0x57 = 35835915874844867368919076489095108449946327955754392558399825615420669938882575
-126094039892345713852759
-1024 bit FNV_prime = 2680 + 28 + 0x8d = 50164565101131186554345988110352789550307653454047907443030175238311120551081474
-51509157692220295382716162651878526895249385292291816524375083746691371804094271
-873160484737966720260389217684476157468082573 
+  32 bit FNV_prime   = 224 + 28 + 0x93  = 16777619
+  64 bit FNV_prime   = 240 + 28 + 0xb3  = 1099511628211
+  128 bit FNV_prime  = 288 + 28 + 0x3b  = 309485009821345068724781371
 
 Part of the magic of FNV is the selection of the FNV_prime for a given sized unsigned integer.
 Some primes do hash better than other primes for a given integer size.
 The offset_basis for FNV-1 is dependent on n, the size of the hash:
 
-32 bit offset_basis   = 2166136261
-64 bit offset_basis   = 14695981039346656037
-128 bit offset_basis  = 144066263297769815596495629667062367629
-256 bit offset_basis  = 100029257958052580907070968620625704837092796014241193945225284501741471925557
-512 bit offset_basis  = 965930312949666949800943540071631046609041874567263789610837432943446265799458293
-2197716438449813051892206539805784495328239340083876191928701583869517785
-1024 bit offset_basis = 141977950649476210687220706414032183208806227954419339608784749146175827232522967
-323037177221508640965212023555493656281746691085718147604710150761480297559698040
-773201576924585630032153049571501574036444603635505054127112859663616102678680828
-93823963790439336411086884584107735010676915 
-*/
-
-/*
-From:
-http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-reference-source
+  32 bit offset_basis   = 2166136261
+  64 bit offset_basis   = 14695981039346656037
+  128 bit offset_basis  = 144066263297769815596495629667062367629
+--------------------------------------------------------------------------------------------------------------------
 */
 
 #if UINT_MAX == 4294967295U
@@ -141,6 +125,7 @@ http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-reference-source
 #error "Unsupported int size"
 #endif
 
+// From: http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-reference-source
 unsigned fnv_32a_str(const char *str, unsigned hval)
 {
 unsigned char *s;
