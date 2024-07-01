@@ -28,10 +28,10 @@ Class(ASTable) {
 	unsigned int	n_cols;
 	unsigned int	n_cols_allocated;
 	unsigned int	n_rows;
-	unsigned int	rows_allocated;
-	int		**cols_hash;
+	unsigned int	n_rows_allocated;
 	char		**cols_title;
 	int		*cols_type;
+	int		*cols_hash;
 	ASTableRow	*rows;
 };
 
@@ -48,6 +48,7 @@ int aSTableSetHeader(ASTable self, int col, char *title, int type);
 
 void aSTableDataPrint(ASTableData data, int type);
 void aSTablePrint(ASTable self);
+void aSTableDump(ASTable self);
 
 unsigned int inline static aSTableGetNRows(ASTable self)
 {
@@ -77,10 +78,12 @@ void aSTableSort(ASTable self, int n_keys, int *keys, int order);
 #define USE_MUSL_SORT yes
 #include "abd/sort.h"
 
+#define ASTABLE_HASH_FREE	-1
+
 // From: http://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
 unsigned static upperPowerOfTwo(unsigned v)
 {
-int c;
+	int c;
 
 	if(v<=2) return v;
 
@@ -88,7 +91,7 @@ int c;
 	for(c=1; c<(sizeof(unsigned)*8); c<<=1){
 		v |= v >> c;
 	}
-	
+
 	return v + 1;
 }
 
@@ -99,30 +102,30 @@ http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
 
 The FNV_prime is dependent on the size of the hash:
 
-    32 bit FNV_prime   = 224 + 28 + 0x93  = 16777619
-    64 bit FNV_prime   = 240 + 28 + 0xb3  = 1099511628211
-    128 bit FNV_prime  = 288 + 28 + 0x3b  = 309485009821345068724781371
-    256 bit FNV_prime  = 2168 + 28 + 0x63 = 374144419156711147060143317175368453031918731002211
-    512 bit FNV_prime  = 2344 + 28 + 0x57 = 35835915874844867368919076489095108449946327955754392558399825615420669938882575
-                                            126094039892345713852759
-    1024 bit FNV_prime = 2680 + 28 + 0x8d = 50164565101131186554345988110352789550307653454047907443030175238311120551081474
-                                            51509157692220295382716162651878526895249385292291816524375083746691371804094271
-                                            873160484737966720260389217684476157468082573 
+32 bit FNV_prime   = 224 + 28 + 0x93  = 16777619
+64 bit FNV_prime   = 240 + 28 + 0xb3  = 1099511628211
+128 bit FNV_prime  = 288 + 28 + 0x3b  = 309485009821345068724781371
+256 bit FNV_prime  = 2168 + 28 + 0x63 = 374144419156711147060143317175368453031918731002211
+512 bit FNV_prime  = 2344 + 28 + 0x57 = 35835915874844867368919076489095108449946327955754392558399825615420669938882575
+126094039892345713852759
+1024 bit FNV_prime = 2680 + 28 + 0x8d = 50164565101131186554345988110352789550307653454047907443030175238311120551081474
+51509157692220295382716162651878526895249385292291816524375083746691371804094271
+873160484737966720260389217684476157468082573 
 
 Part of the magic of FNV is the selection of the FNV_prime for a given sized unsigned integer.
 Some primes do hash better than other primes for a given integer size.
 The offset_basis for FNV-1 is dependent on n, the size of the hash:
 
-    32 bit offset_basis   = 2166136261
-    64 bit offset_basis   = 14695981039346656037
-    128 bit offset_basis  = 144066263297769815596495629667062367629
-    256 bit offset_basis  = 100029257958052580907070968620625704837092796014241193945225284501741471925557
-    512 bit offset_basis  = 965930312949666949800943540071631046609041874567263789610837432943446265799458293
-                            2197716438449813051892206539805784495328239340083876191928701583869517785
-    1024 bit offset_basis = 141977950649476210687220706414032183208806227954419339608784749146175827232522967
-                            323037177221508640965212023555493656281746691085718147604710150761480297559698040
-                            773201576924585630032153049571501574036444603635505054127112859663616102678680828
-                            93823963790439336411086884584107735010676915 
+32 bit offset_basis   = 2166136261
+64 bit offset_basis   = 14695981039346656037
+128 bit offset_basis  = 144066263297769815596495629667062367629
+256 bit offset_basis  = 100029257958052580907070968620625704837092796014241193945225284501741471925557
+512 bit offset_basis  = 965930312949666949800943540071631046609041874567263789610837432943446265799458293
+2197716438449813051892206539805784495328239340083876191928701583869517785
+1024 bit offset_basis = 141977950649476210687220706414032183208806227954419339608784749146175827232522967
+323037177221508640965212023555493656281746691085718147604710150761480297559698040
+773201576924585630032153049571501574036444603635505054127112859663616102678680828
+93823963790439336411086884584107735010676915 
 */
 
 /*
@@ -131,42 +134,47 @@ http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-reference-source
 */
 
 #if UINT_MAX == 4294967295U
-	#define FNV_PRIME ((unsigned)0x01000193)
+#define FNV_PRIME ((unsigned)0x01000193)
 #elif UINT_MAX == 18446744073709551615U
-	#define FNV_PRIME ((unsigned)0x100000001b3U)
+#define FNV_PRIME ((unsigned)0x100000001b3U)
 #else
-	#error "Unsupported int size"
+#error "Unsupported int size"
 #endif
 
 unsigned fnv_32a_str(const char *str, unsigned hval)
 {
-    unsigned char *s = (unsigned char *)str;
+unsigned char *s;
 
-    while (*s) {
-	hval ^= (unsigned) *s++;
-	hval *= FNV_PRIME;
+	if((s = (unsigned char *)str) == NULL) return 0;
+	
+	while (*s) {
+		hval ^= (unsigned) *s++;
+		hval *= FNV_PRIME;
 
-	// 32 bits optimization
-	//hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+		// 32 bits optimization
+		//hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
 
-	// 64 bits optimization
-	//hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
-    }
+		// 64 bits optimization
+		//hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
+	}
 
-    return hval;
+	return hval;
 }
 
 Constructor(ASTable, int n_cols)
 {
-int cols_allocated;
+int c, *p;
 
 	CInit(ASTable);
 
 	self->n_rows = 0;
-	self->rows_allocated = 0;
+	self->n_rows_allocated = 0;
 
 	self->n_cols = n_cols;
 	self->n_cols_allocated = upperPowerOfTwo(self->n_cols);
+	
+	// Males sure there will always be at least 1/3 at extra allocated space for hash vector
+	if(n_cols + (n_cols>>1) > self->n_cols_allocated) self->n_cols_allocated <<= 1;
 
 	self->cols_title = malloc(sizeof(char *) * self->n_cols_allocated);
 	self->cols_type = malloc(sizeof(int) * self->n_cols_allocated);
@@ -176,8 +184,14 @@ int cols_allocated;
 		if(self->cols_title) free(self->cols_title);
 		if(self->cols_type) free(self->cols_type);
 		if(self->cols_hash) free(self->cols_hash);
+		free(self);
 		return NULL;
 	}
+	
+	c = self->n_cols_allocated;
+	p = self->cols_hash;
+	
+	while(c--) *p++ = ASTABLE_HASH_FREE;
 
 	self->rows = NULL;
 
@@ -186,7 +200,7 @@ int cols_allocated;
 
 Destructor(ASTable)
 {
-int c,r;
+	int c,r;
 
 	if(nullAssert(self)) return;
 	if(nullAssert(self->cols_title)) return;
@@ -212,7 +226,7 @@ int c,r;
 
 char *aSTableGetTypeName(ASTable self, int col)
 {
-int type;
+	int type;
 
 	if(nullAssert(self)) return NULL;
 
@@ -227,37 +241,86 @@ int type;
 
 int static aSTableCheckExpand(ASTable self, int extension)
 {
-int new_size, c;
+	int new_size, c;
 
-        if(self->n_rows + extension > self->rows_allocated){
+	if(self->n_rows + extension > self->n_rows_allocated){
 
 		if(self->n_rows + extension < ASTABLE_INITIAL_SIZE)
 			new_size = ASTABLE_INITIAL_SIZE;
 		else
 			new_size = upperPowerOfTwo(self->n_rows + extension);
 
-                if(self->rows_allocated == 0)
-                        self->rows = malloc(sizeof(ASTableRow) * new_size);
-                else
-                        self->rows = realloc(self->rows, sizeof(ASTableRow) * new_size);
+		if(self->n_rows_allocated == 0)
+			self->rows = malloc(sizeof(ASTableRow) * new_size);
+		else
+			self->rows = realloc(self->rows, sizeof(ASTableRow) * new_size);
 
 		if(self->rows == NULL) return 0;
 
-		for(c=self->rows_allocated; c<new_size; c++) self->rows[c] = NULL;
-                self->rows_allocated = new_size;
-        }
+		for(c=self->n_rows_allocated; c<new_size; c++) self->rows[c] = NULL;
+		self->n_rows_allocated = new_size;
+	}
 
 	return 1;
 }
 
+// The algorithm per si is basically a linear congruential generator (LCG), that is a well-known method for generating pseudo-random sequences.
+// An LCG typically takes the form:
+//
+// X_(n+1) = (a * X_n + c) % m
+// 
+// Using parameters from CPython dictobject.c, once it has already proved good.
+// a = 5, c = 1
+//
+// IMPORTANT: This function is inteded to private use and DOES NOT have protection agains null pointers.
+
+unsigned static aSTableGetColHashIndexOrFreeSlot(ASTable self, char *title)
+{
+unsigned slot, hash, pos;
+
+	hash = fnv_32a_str(title, 0);
+	
+	slot = hash & (self->n_cols_allocated - 1);
+
+	while((pos = self->cols_hash[slot]) != ASTABLE_HASH_FREE){
+		if(!strcmp(self->cols_title[pos], title)) return slot;
+		slot = (5 * slot  + 1) & (self->n_cols_allocated - 1);
+	}
+
+	return slot;
+}
+
+unsigned aSTableGetColIndex(ASTable self, char *title)
+{
+unsigned slot;
+int	 pos;
+
+	if(nullAssert(self)) return -2;
+	if(nullAssert(title)) return -3;
+
+	slot = aSTableGetColHashIndexOrFreeSlot(self, title);
+	pos  = self->cols_hash[slot];
+
+	if(pos == ASTABLE_HASH_FREE) return -1;
+
+	return pos;
+}
+
 int aSTableSetHeader(ASTable self, int col, char *title, int type)
 {  
-	if(nullAssert(self)) return -1;
+unsigned slot;
 
-	if(col>=self->n_cols) return -1;
+	if(nullAssert(self)) return -2;
+	if(nullAssert(title)) return -3;
+	if(col>=self->n_cols) return -4;
+
+	slot = aSTableGetColHashIndexOrFreeSlot(self,title);
+
+	if(self->cols_hash[slot] != ASTABLE_HASH_FREE) return -1;
 
 	self->cols_title[col] = title;
 	self->cols_type[col] = type;
+	self->cols_hash[slot] = col;
 	
 	return 0;
 }
@@ -353,6 +416,39 @@ int c,r;
 			if(c!=self->n_cols-1) printf(" | "); else printf("\n");
 		}
 	}
+}
+
+void aSTableDump(ASTable self)
+{
+int c;
+
+	printf("Table n_cols: %d\n", self->n_cols);
+	printf("Table n_cols_allocated: %d\n", self->n_cols_allocated);
+	printf("Table n_rows: %d\n", self->n_rows);
+	printf("Table n_rows_allocated: %d\n", self->n_rows_allocated);
+	printf("\n");
+
+	printf("Hash table:\n");
+	for(c=0; c<self->n_cols_allocated; c++){
+		printf(" %d:[%d]", c, self->cols_hash[c]);
+	}
+	printf("\n");
+	printf("\n");
+
+	printf("Table titles, rounded hash and hash content:\n");
+	for(c=0; c<self->n_cols; c++){
+		if(self->cols_title[c]){
+			printf(" \"%s\"" , self->cols_title[c]);
+			printf(" [%d]", fnv_32a_str(self->cols_title[c], 0) & (self->n_cols_allocated - 1));
+			printf(" (%d)", aSTableGetColHashIndexOrFreeSlot(self, self->cols_title[c]));
+		}else{
+			printf(" (null)");
+		}
+	}
+	printf("\n");
+	printf("\n");
+
+	aSTablePrint(self);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
