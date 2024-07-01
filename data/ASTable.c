@@ -226,7 +226,7 @@ Destructor(ASTable)
 
 char *aSTableGetTypeName(ASTable self, int col)
 {
-	int type;
+int type;
 
 	if(nullAssert(self)) return NULL;
 
@@ -241,7 +241,7 @@ char *aSTableGetTypeName(ASTable self, int col)
 
 int static aSTableCheckExpand(ASTable self, int extension)
 {
-	int new_size, c;
+int new_size, c;
 
 	if(self->n_rows + extension > self->n_rows_allocated){
 
@@ -264,15 +264,17 @@ int static aSTableCheckExpand(ASTable self, int extension)
 	return 1;
 }
 
+// aSTableGetColHashIndexOrFreeSlot: Search for a column title or find a free slow to add one
+//
 // The algorithm per si is basically a linear congruential generator (LCG), that is a well-known method for generating pseudo-random sequences.
 // An LCG typically takes the form:
 //
 // X_(n+1) = (a * X_n + c) % m
 // 
-// Using parameters from CPython dictobject.c, once it has already proved good.
-// a = 5, c = 1
+// Using parameters from CPython dictobject.c, once it has already proved good. (a = 5, c = 1)
 //
 // IMPORTANT: This function is inteded to private use and DOES NOT have protection agains null pointers.
+// 
 
 unsigned static aSTableGetColHashIndexOrFreeSlot(ASTable self, char *title)
 {
